@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+    <meta charset="UTF-8">
+    <title>AI 聊天助手</title>
+</head>
+<body>
+<h2>AI 聊天助手</h2>
+
+<!-- 注册 -->
+<h3>注册</h3>
+<input type="text" id="regName" placeholder="用户名">
+<input type="text" id="regEmail" placeholder="邮箱">
+<input type="password" id="regPwd" placeholder="密码">
+<button onclick="register()">注册</button>
+<br><br>
+
+<!-- 登录 -->
+<h3>登录</h3>
+<input type="text" id="loginId" placeholder="用户ID">
+<input type="password" id="loginPwd" placeholder="密码">
+<button onclick="login()">登录</button>
+<p id="loginStatus" style="color:green;"></p>
+
+<!-- 聊天 -->
+<div id="chatSection" style="display:none;">
+    <h3>聊天</h3>
+    <input type="text" id="chatInput" placeholder="请输入你的问题" style="width:300px;">
+    <button onclick="sendMessage()">发送</button>
+    <pre id="responseArea" style="white-space:pre-wrap;"></pre>
+</div>
+
+<script>
+    let loggedInUserId = null;
+    let jwtToken = null; // 存储登录后的 Token
+
+    async function register() {
+        const name = document.getElementById("regName").value;
+        const email = document.getElementById("regEmail").value;
+        const password = document.getElementById("regPwd").value;
+
+        const res = await fetch("/api/user/register", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ name, email, password })
+        });
+
+        const data = await res.json();
+        alert("注册成功，ID为：" + data.id);
+    }
+
+    async function login() {
+        const id = document.getElementById("loginId").value;
+        const password = document.getElementById("loginPwd").value;
+
+        const res = await fetch(`/api/user/login?id=${id}&password=${password}`, {
+            method: "POST"
+        });
+
+        if (res.status === 200) {
+            const data = await res.json();
+            jwtToken = data.token; //
+            loggedInUserId = data.user.id;
+            document.getElementById("loginStatus").innerText = "登录成功！";
+            document.getElementById("chatSection").style.display = "block";
+        } else {
+            alert("登录失败，用户名或密码错误");
+        }
+    }
+
+    async function sendMessage() {
+        const message = document.getElementById("chatInput").value.trim();
+        if (!message || !loggedInUserId || !jwtToken) {
+            alert("请先登录并输入消息！");
+            return;
+        }
+
+        const res = await fetch("/chat", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": "Bearer " + jwtToken // ✅ 添加 JWT token
+            },
+            body: JSON.stringify({ userId: loggedInUserId, message })
+        });
+
+        const data = await res.json();
+        document.getElementById("responseArea").innerText += `你：${message}\nAI：${data.data}\n\n`;
+        document.getElementById("chatInput").value = "";
+    }
+</script>
+</body>
+</html>
